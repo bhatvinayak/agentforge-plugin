@@ -1,0 +1,10 @@
+{
+  "agentforge-tracker": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node ./dashboard/hook-preinvocation.js"
+      }
+    ]
+  }
+}

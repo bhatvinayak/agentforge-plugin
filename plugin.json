@@ -1,0 +1,15 @@
+{
+  "name": "agentforge",
+  "displayName": "AgentForge",
+  "version": "1.0.0",
+  "description": "Autonomous 7-agent software company workforce (PM, Planner, Coder, Tester, Reviewer, Reality Advisor, Watcher) with real-time multi-project web command center dashboard and human-in-the-loop controls.",
+  "logo": "assets/logo.svg",
+  "author": {
+    "name": "AgentForge Community"
+  },
+  "suggestedPrompts": [
+    "/agent-dashboard",
+    "/agent-pm Scope a new microservice with PRD, user stories, and acceptance criteria",
+    "/agent-watcher Track and orchestrate active project pipelines"
+  ]
+}

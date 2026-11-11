@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentForge HQ — Multi-Project Agent Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            dark: {
+              950: '#090d16',
+              900: '#0f172a',
+              850: '#141e33',
+              800: '#1e293b',
+              750: '#273548',
+              700: '#334155',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.2); }
+      50% { box-shadow: 0 0 22px rgba(34, 197, 94, 0.55); }
+    }
+    .pulse-working { animation: pulseGlow 2s infinite; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col custom-scroll selection:bg-emerald-500 selection:text-white">
+
+  <!-- TOP APP BAR -->
+  <header class="bg-dark-900 border-b border-dark-800 px-6 py-3 sticky top-0 z-40 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+    <!-- BRAND & STATUS -->
+    <div class="flex items-center space-x-3.5">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-emerald-950/50">
+        <i class="fa-solid fa-network-wired text-lg"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2.5">
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            AgentForge <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ENTERPRISE HQ</span>
+          </h1>
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-950/80 text-emerald-300 border border-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> 7 Agents Online
+          </span>
+          <span class="text-xs px-2 py-0.5 rounded bg-dark-800 text-slate-400 border border-dark-700" id="sync-pill">
+            ● Live Sync
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">Multi-project autonomous execution tracker with initiator telemetry</p>
+      </div>
+    </div>
+
+    <!-- PROJECT SELECTOR & HEADER ACTIONS -->
+    <div class="flex items-center flex-wrap gap-3">
+      
+      <!-- PROJECT SELECTION DROPDOWN (TOP RIGHT) -->
+      <div class="flex items-center space-x-2 bg-dark-850 border border-dark-700 hover:border-dark-600 px-3 py-1.5 rounded-xl shadow-inner transition">
+        <i class="fa-solid fa-folder-tree text-emerald-400 text-xs"></i>
+        <label for="project-filter" class="text-xs text-slate-400 font-medium">Project:</label>
+        <select id="project-filter" onchange="onProjectChange()" class="bg-transparent font-bold text-xs text-white focus:outline-none cursor-pointer pr-2">
+          <option value="ALL" class="bg-dark-900 text-white font-bold">🌐 All Projects (Company View)</option>
+          <!-- Dynamically populated from active tasks/projects -->
+        </select>
+      </div>
+
+      <!-- STAT PILL -->
+      <div class="hidden lg:flex items-center space-x-4 border-l border-r border-dark-800 px-4 text-xs">
+        <div>
+          <span class="text-slate-400 block text-[10px]">Filter Mode</span>
+          <span class="font-semibold text-cyan-400" id="stat-filter-label">All Projects</span>
+        </div>
+        <div>
+          <span class="text-slate-400 block text-[10px]">Active In-Flight</span>
+          <span class="font-semibold text-emerald-400" id="stat-active-count">0 Tasks</span>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="flex items-center space-x-2">
+        <button onclick="clearAllTasks()" class="px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-750 text-xs font-semibold text-slate-300 border border-dark-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-broom text-slate-400"></i> Clear Board
+        </button>
+
+        <button onclick="openNewTaskModal()" class="px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-semibold text-white shadow-md shadow-emerald-900/30 flex items-center gap-2 transition transform active:scale-95">
+          <i class="fa-solid fa-plus"></i> Dispatch Initiative
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="flex-1 p-6 space-y-6">
+
+    <!-- AGENT ROSTER: 7 SPECIALIZED DEPARTMENTS -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase flex items-center gap-2">
+          <i class="fa-solid fa-users-gear text-emerald-400"></i> Active Agent Workforce (7 Specialists)
+        </h2>
+        <span class="text-xs text-slate-500" id="agent-filter-scope">Showing workload for: All Projects</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3" id="agent-roster-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- PIPELINE STAGE BOARD (KANBAN FLOW) -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase flex items-center gap-2">
+            <i class="fa-solid fa-diagram-project text-cyan-400"></i> Workspace Workflow Stages
+          </h2>
+          <span class="text-xs bg-dark-800 text-slate-400 px-2.5 py-0.5 rounded-full border border-dark-700" id="total-tasks-badge">0 Initiatives</span>
+        </div>
+        <div class="flex items-center space-x-3 text-xs text-slate-400">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Working</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Blocked / Review</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-500"></span> Shipped</span>
+        </div>
+      </div>
+
+      <!-- STAGES GRID -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3.5 min-h-[420px] custom-scroll">
+        
+        <!-- STAGE 1: BACKLOG & SCOPING -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs font-bold border border-purple-500/20">1</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Backlog & Scoping</h3>
+                <span class="text-[10px] text-purple-400 font-mono">/agent-pm</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-1">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-1"></div>
+        </div>
+
+        <!-- STAGE 2: PLANNING & R&D -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs font-bold border border-cyan-500/20">2</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Planning & R&D</h3>
+                <span class="text-[10px] text-cyan-400 font-mono">/agent-planner</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-2">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-2"></div>
+        </div>
+
+        <!-- STAGE 3: DEVELOPMENT -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold border border-emerald-500/20">3</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Development</h3>
+                <span class="text-[10px] text-emerald-400 font-mono">/agent-coder</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-3">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-3"></div>
+        </div>
+
+        <!-- STAGE 4: TESTING & QA -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs font-bold border border-amber-500/20">4</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Testing & QA</h3>
+                <span class="text-[10px] text-amber-400 font-mono">/agent-tester</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-4">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-4"></div>
+        </div>
+
+        <!-- STAGE 5: CODE REVIEW -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold border border-blue-500/20">5</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Code Review</h3>
+                <span class="text-[10px] text-blue-400 font-mono">/agent-reviewer</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-5">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-5"></div>
+        </div>
+
+        <!-- STAGE 6: REALITY CHECK -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-rose-500/10 text-rose-400 flex items-center justify-center text-xs font-bold border border-rose-500/20">6</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Reality Check</h3>
+                <span class="text-[10px] text-rose-400 font-mono">/agent-reality</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-6">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-6"></div>
+        </div>
+
+        <!-- STAGE 7: SHIPPED -->
+        <div class="bg-dark-900/90 border border-dark-800 rounded-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-dark-800">
+            <div class="flex items-center space-x-2">
+              <span class="h-6 w-6 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold border border-emerald-500/20">7</span>
+              <div>
+                <h3 class="text-xs font-bold text-slate-200">Shipped Live</h3>
+                <span class="text-[10px] text-emerald-400 font-medium">Production</span>
+              </div>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-400 bg-dark-800 px-1.5 py-0.5 rounded" id="count-stage-7">0</span>
+          </div>
+          <div class="flex-1 space-y-2.5 custom-scroll overflow-y-auto max-h-[520px]" id="column-stage-7"></div>
+        </div>
+
+      </div>
+
+      <!-- EMPTY STATE BANNER -->
+      <div id="empty-state-banner" class="hidden p-8 border border-dashed border-dark-800 rounded-2xl bg-dark-900/50 text-center space-y-3">
+        <div class="h-12 w-12 rounded-2xl bg-dark-800 text-slate-400 mx-auto flex items-center justify-center text-xl">
+          <i class="fa-solid fa-inbox"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-200" id="empty-title">No Active Tasks Found</h3>
+          <p class="text-xs text-slate-400 max-w-md mx-auto mt-1" id="empty-desc">
+            No active workstreams found for the selected project. Trigger an agent in chat via <code>/agent-*</code> or click below to dispatch an initiative.
+          </p>
+        </div>
+        <button onclick="openNewTaskModal()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow transition">
+          + Dispatch First Task
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ENHANCED LIVE TERMINAL & CONSOLE FEED -->
+    <section class="bg-dark-900 border border-dark-800 rounded-xl p-4 shadow-lg space-y-3">
+      <div class="flex items-center justify-between border-b border-dark-800 pb-3">
+        <div class="flex items-center space-x-3">
+          <div class="flex space-x-1.5">
+            <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+          </div>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-terminal text-emerald-400"></i> Real-Time Multi-Project Event Stream & Action Logs
+          </h2>
+        </div>
+        <div class="flex items-center space-x-2 text-xs">
+          <span class="text-[11px] text-slate-500" id="log-filter-tag">All Projects</span>
+          <button onclick="clearLogs()" class="text-slate-400 hover:text-slate-200 px-2 py-1 rounded bg-dark-800 border border-dark-700">Clear</button>
+        </div>
+      </div>
+
+      <div class="h-44 overflow-y-auto custom-scroll font-mono text-xs space-y-2 p-2.5 bg-dark-950/70 rounded-lg border border-dark-800/80" id="live-console">
+        <!-- Live logs populate here -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- HUMAN INTERVENTION MODAL -->
+  <div id="modal-intervene" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-dark-900 border border-dark-700 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
+      <div class="px-6 py-4 bg-dark-850 border-b border-dark-700 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
+            <i class="fa-solid fa-hand-holding-hand"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-100 flex items-center gap-2">
+              Human Intervention
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono" id="modal-task-id">#TASK</span>
+            </h3>
+            <p class="text-xs text-slate-400">Override agent decisions, provide guidance, or reroute across pipeline</p>
+          </div>
+        </div>
+        <button onclick="closeInterveneModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Task Info & Context -->
+        <div class="p-3.5 rounded-xl bg-dark-950 border border-dark-800 space-y-2 text-xs">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Target Initiative</span>
+              <h4 class="font-bold text-slate-200 text-sm" id="modal-task-title">Task Title</h4>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Project</span>
+              <span class="font-mono text-cyan-400 font-semibold" id="modal-task-project">📁 experiments</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-dark-850 text-[11px] text-slate-400">
+            <span><b>Initiated by:</b> <span class="text-purple-300" id="modal-task-initiator">Human</span></span>
+            <span><b>Current Stage:</b> <span class="text-emerald-400" id="modal-task-stage">Planning</span></span>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 block">
+            Direct Guidance / Human Input:
+          </label>
+          <textarea id="modal-input-directive" rows="3" placeholder="Enter instructions to inject into the agent prompt..." class="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition"></textarea>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-300">Executive Stage Routing:</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="sendInterventionRoute(3)" class="p-2.5 rounded-xl bg-dark-800 hover:bg-emerald-950/40 border border-dark-700 text-left transition text-xs">
+              <span class="font-semibold text-slate-200 block text-emerald-400">💻 Force Dev</span>
+              <span class="text-[10px] text-slate-400">Send to Coder</span>
+            </button>
+            <button onclick="sendInterventionRoute(4)" class="p-2.5 rounded-xl bg-dark-800 hover:bg-amber-950/40 border border-dark-700 text-left transition text-xs">
+              <span class="font-semibold text-slate-200 block text-amber-400">🧪 Force QA</span>
+              <span class="text-[10px] text-slate-400">Run test assertions</span>
+            </button>
+            <button onclick="sendInterventionRoute(5)" class="p-2.5 rounded-xl bg-dark-800 hover:bg-blue-950/40 border border-dark-700 text-left transition text-xs">
+              <span class="font-semibold text-slate-200 block text-blue-400">🔍 Force Review</span>
+              <span class="text-[10px] text-slate-400">Security audit</span>
+            </button>
+            <button onclick="sendInterventionRoute(7)" class="p-2.5 rounded-xl bg-dark-800 hover:bg-purple-950/40 border border-dark-700 text-left transition text-xs">
+              <span class="font-semibold text-slate-200 block text-purple-400">🚀 Mark Shipped</span>
+              <span class="text-[10px] text-slate-400">Direct signoff</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-dark-800">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-400">Priority:</span>
+            <select id="modal-select-priority" class="bg-dark-950 border border-dark-700 rounded-lg text-xs px-2.5 py-1 text-slate-200 focus:outline-none focus:border-emerald-500">
+              <option value="critical">🔴 Critical</option>
+              <option value="high">🟠 High</option>
+              <option value="medium">🟡 Medium</option>
+              <option value="low">🟢 Low</option>
+            </select>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="sendCancelTask()" class="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-semibold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash"></i> Cancel Task
+            </button>
+            <button onclick="sendSaveIntervention()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-950 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-check"></i> Apply Directives
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW INITIATIVE DISPATCH MODAL -->
+  <div id="modal-new-task" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-dark-900 border border-dark-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+      <div class="px-6 py-4 bg-dark-850 border-b border-dark-700 flex items-center justify-between">
+        <h3 class="font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-sparkles text-emerald-400"></i> Dispatch New Project Task
+        </h3>
+        <button onclick="closeNewTaskModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Target Project Selection -->
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 block mb-1">Target Project</label>
+          <input type="text" id="new-task-project" placeholder="e.g. experiments, VoiceNotes, invoicing-saas" class="w-full bg-dark-950 border border-dark-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 block mb-1">Initiative Title</label>
+          <input type="text" id="new-task-title" placeholder="e.g. Architect distributed caching layer" class="w-full bg-dark-950 border border-dark-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 block mb-1">Detailed Description of Work</label>
+          <textarea id="new-task-desc" rows="3" placeholder="Explain what the agents need to execute, test, and audit..." class="w-full bg-dark-950 border border-dark-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-dark-800">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-400">Initiator:</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800">Human (Supervisor)</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="closeNewTaskModal()" class="px-3 py-1.5 rounded-lg bg-dark-800 text-slate-300 text-xs font-semibold">Cancel</button>
+            <button onclick="submitNewTask()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow flex items-center gap-1.5">
+              <i class="fa-solid fa-paper-plane"></i> Dispatch
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC & REAL-TIME SYNC -->
+  <script>
+    const AGENTS = [
+      { id: 'agent-pm', name: 'Alex', cmd: '/agent-pm', role: 'Product Manager', icon: 'fa-user-tie', color: 'purple', status: 'idle', activeTask: null },
+      { id: 'agent-watcher', name: 'Omni', cmd: '/agent-watcher', role: 'Task Watcher', icon: 'fa-satellite-dish', color: 'emerald', status: 'active', activeTask: 'Listening & Dispatching' },
+      { id: 'agent-planner', name: 'Elena', cmd: '/agent-planner', role: 'Planner & R&D', icon: 'fa-compass-drafting', color: 'cyan', status: 'idle', activeTask: null },
+      { id: 'agent-coder', name: 'Marcus', cmd: '/agent-coder', role: 'Software Engineer', icon: 'fa-code', color: 'emerald', status: 'idle', activeTask: null },
+      { id: 'agent-tester', name: 'Maya', cmd: '/agent-tester', role: 'QA & Testing', icon: 'fa-vial-circle-check', color: 'amber', status: 'idle', activeTask: null },
+      { id: 'agent-reviewer', name: 'Silas', cmd: '/agent-reviewer', role: 'Code Reviewer', icon: 'fa-shield-halved', color: 'blue', status: 'idle', activeTask: null },
+      { id: 'agent-reality', name: 'Victor', cmd: '/agent-reality', role: 'Real-Life Advisor', icon: 'fa-earth-americas', color: 'rose', status: 'idle', activeTask: null },
+    ];
+
+    const STAGES = [
+      { id: 1, key: 'scoping', label: 'Backlog & Scoping', agentId: 'agent-pm', agentName: 'Alex (PM)' },
+      { id: 2, key: 'planning', label: 'Planning & R&D', agentId: 'agent-planner', agentName: 'Elena (Planner)' },
+      { id: 3, key: 'development', label: 'Development', agentId: 'agent-coder', agentName: 'Marcus (Coder)' },
+      { id: 4, key: 'testing', label: 'Testing & QA', agentId: 'agent-tester', agentName: 'Maya (Tester)' },
+      { id: 5, key: 'review', label: 'Code Review', agentId: 'agent-reviewer', agentName: 'Silas (Reviewer)' },
+      { id: 6, key: 'reality', label: 'Reality Check', agentId: 'agent-reality', agentName: 'Victor (Advisor)' },
+      { id: 7, label: 'Shipped', agentId: null, agentName: 'Production' }
+    ];
+
+    let allTasks = [];
+    let allEvents = [];
+    let knownProjects = ['experiments'];
+    let selectedProject = localStorage.getItem('agentforge_project_filter') || 'ALL';
+    let selectedTaskId = null;
+
+    function init() {
+      renderAgentRoster();
+      connectLiveStream();
+    }
+
+    function connectLiveStream() {
+      if (window.location.protocol.startsWith('http')) {
+        const evtSource = new EventSource('/api/stream');
+        evtSource.onmessage = function(e) {
+          try {
+            const data = JSON.parse(e.data);
+            handleStateUpdate(data);
+          } catch (err) {
+            console.error('SSE Parse error', err);
+          }
+        };
+        evtSource.onerror = function() {
+          document.getElementById('sync-pill').innerText = '○ Polling Sync';
+          fetchState();
+        };
+      } else {
+        fetchState();
+      }
+      setInterval(fetchState, 2500);
+    }
+
+    async function fetchState() {
+      try {
+        const res = await fetch('/api/state');
+        if (res.ok) {
+          const data = await res.json();
+          handleStateUpdate(data);
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    function handleStateUpdate(data) {
+      allTasks = data.tasks || [];
+      allEvents = data.events || [];
+      knownProjects = data.projects || ['experiments'];
+
+      // Ensure all distinct task projects are included
+      allTasks.forEach(t => {
+        if (t.project && !knownProjects.includes(t.project)) {
+          knownProjects.push(t.project);
+        }
+      });
+
+      updateProjectDropdown();
+      updateFilteredView();
+    }
+
+    function updateProjectDropdown() {
+      const select = document.getElementById('project-filter');
+      const currentVal = selectedProject;
+
+      let html = `<option value="ALL" class="bg-dark-900 text-white font-bold" ${selectedProject === 'ALL' ? 'selected' : ''}>🌐 All Projects (Company View)</option>`;
+      knownProjects.forEach(proj => {
+        const isSelected = selectedProject === proj ? 'selected' : '';
+        html += `<option value="${proj}" class="bg-dark-900 text-slate-200 font-semibold" ${isSelected}>📁 ${proj}</option>`;
+      });
+
+      select.innerHTML = html;
+    }
+
+    function onProjectChange() {
+      const select = document.getElementById('project-filter');
+      selectedProject = select.value;
+      localStorage.setItem('agentforge_project_filter', selectedProject);
+      updateFilteredView();
+    }
+
+    function updateFilteredView() {
+      // Filter tasks
+      const filteredTasks = selectedProject === 'ALL' 
+        ? allTasks 
+        : allTasks.filter(t => (t.project || '').toLowerCase() === selectedProject.toLowerCase());
+
+      // Filter events
+      const filteredEvents = selectedProject === 'ALL'
+        ? allEvents
+        : allEvents.filter(e => !e.project || e.project.toLowerCase() === selectedProject.toLowerCase());
+
+      // Update Filter Label
+      const filterLabel = selectedProject === 'ALL' ? 'All Projects' : `Project: ${selectedProject}`;
+      document.getElementById('stat-filter-label').innerText = filterLabel;
+      document.getElementById('agent-filter-scope').innerText = `Workload Scope: ${filterLabel}`;
+      document.getElementById('log-filter-tag').innerText = filterLabel;
+
+      renderKanbanBoard(filteredTasks);
+      renderLogs(filteredEvents);
+      updateAgentWorkload(filteredTasks);
+    }
+
+    function renderAgentRoster() {
+      const container = document.getElementById('agent-roster-grid');
+      container.innerHTML = AGENTS.map(agent => {
+        const isWorking = agent.status === 'working' || agent.status === 'active';
+        const colorClasses = {
+          purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+          cyan: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+          emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+          amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+          blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+          rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+        }[agent.color] || 'text-slate-400 bg-dark-800 border-dark-700';
+
+        const pulseClass = isWorking ? 'pulse-working' : '';
+
+        return `
+          <div class="bg-dark-900 border border-dark-800 rounded-xl p-3 flex flex-col justify-between transition hover:border-dark-700 ${pulseClass}">
+            <div class="flex items-center justify-between mb-2">
+              <div class="h-8 w-8 rounded-lg ${colorClasses} border flex items-center justify-center text-sm">
+                <i class="fa-solid ${agent.icon}"></i>
+              </div>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                agent.status === 'working' || agent.status === 'active' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                agent.status === 'blocked' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
+                'bg-dark-800 text-slate-400 border border-dark-700'
+              }">
+                <span class="w-1.5 h-1.5 rounded-full ${
+                  agent.status === 'working' || agent.status === 'active' ? 'bg-emerald-400 animate-pulse' :
+                  agent.status === 'blocked' ? 'bg-rose-400' : 'bg-slate-500'
+                }"></span>
+                ${agent.status.toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-0.5">
+                <h4 class="text-xs font-bold text-slate-100">${agent.name}</h4>
+                <span class="font-mono text-[9px] px-1 py-0.2 rounded bg-dark-950 text-emerald-400 border border-dark-700">${agent.cmd}</span>
+              </div>
+              <p class="text-[10px] text-slate-400 leading-tight mb-2">${agent.role}</p>
+              <div class="text-[10px] p-1.5 rounded bg-dark-950 border border-dark-800 text-slate-300 truncate" title="${agent.activeTask || 'Idle'}">
+                ${agent.activeTask ? `<i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-1"></i> ${agent.activeTask}` : '<span class="text-slate-500">Idle / Ready</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderKanbanBoard(tasks) {
+      for (let i = 1; i <= 7; i++) {
+        const col = document.getElementById(`column-stage-${i}`);
+        const count = document.getElementById(`count-stage-${i}`);
+        if (col) col.innerHTML = '';
+        if (count) count.innerText = '0';
+      }
+
+      const emptyBanner = document.getElementById('empty-state-banner');
+      if (tasks.length === 0) {
+        if (emptyBanner) emptyBanner.classList.remove('hidden');
+      } else {
+        if (emptyBanner) emptyBanner.classList.add('hidden');
+      }
+
+      tasks.forEach(task => {
+        const col = document.getElementById(`column-stage-${task.stageId}`);
+        const count = document.getElementById(`count-stage-${task.stageId}`);
+        if (!col) return;
+
+        count.innerText = parseInt(count.innerText || '0') + 1;
+
+        const priorityColors = {
+          critical: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+          high: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+          medium: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+          low: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+        }[task.priority] || 'bg-slate-800 text-slate-300';
+
+        const stage = STAGES.find(s => s.id === task.stageId);
+
+        // Initiator badge styling
+        const isHumanInit = (task.initiator || '').toLowerCase().includes('human') || (task.initiator || '').toLowerCase().includes('user');
+        const initiatorBadge = isHumanInit
+          ? `<span class="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60 text-[9px] flex items-center gap-1"><i class="fa-solid fa-user text-[8px]"></i> ${task.initiator || 'Human'}</span>`
+          : `<span class="px-1.5 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 text-[9px] flex items-center gap-1"><i class="fa-solid fa-robot text-[8px]"></i> ${task.initiator || 'Agent'}</span>`;
+
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl bg-dark-850 border border-dark-750 hover:border-dark-600 transition shadow-sm space-y-2.5 relative group ${
+          task.status === 'blocked' ? 'border-rose-700/60 bg-rose-950/20' : ''
+        }`;
+
+        card.innerHTML = `
+          <!-- CARD HEADER: ID, PROJECT TAG & PRIORITY -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-dark-950 text-slate-400 border border-dark-800">${task.id}</span>
+              <span class="px-1.5 py-0.5 rounded bg-dark-950 text-cyan-300 font-mono text-[9px] border border-cyan-800/40 font-semibold">📁 ${task.project || 'General'}</span>
+            </div>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${priorityColors}">
+              ${(task.priority || 'NORMAL').toUpperCase()}
+            </span>
+          </div>
+
+          <!-- TITLE & INITIATOR -->
+          <div>
+            <h4 class="text-xs font-bold text-slate-200 group-hover:text-white transition leading-snug">${task.title}</h4>
+            <div class="flex items-center gap-1.5 mt-1">
+              <span class="text-[10px] text-slate-500">Initiated by:</span>
+              ${initiatorBadge}
+            </div>
+          </div>
+
+          <!-- DETAILED DESCRIPTION OF CURRENT WORK -->
+          <div class="p-2 rounded-lg bg-dark-950 border border-dark-800/80 space-y-1">
+            <span class="text-[9px] text-slate-500 uppercase tracking-wider block font-semibold">Current Action / Detail:</span>
+            <p class="text-[11px] text-slate-300 leading-relaxed font-mono line-clamp-3">
+              ${task.currentAction || task.desc || 'Executing stage milestone...'}
+            </p>
+          </div>
+
+          ${task.humanGuidance ? `
+            <div class="p-1.5 rounded bg-amber-950/40 border border-amber-800/60 text-[10px] text-amber-300 flex items-start gap-1">
+              <i class="fa-solid fa-crown text-[9px] mt-0.5"></i>
+              <span><b>Supervisor Directive:</b> ${task.humanGuidance}</span>
+            </div>
+          ` : ''}
+
+          <!-- PROGRESS BAR -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-[10px] text-slate-400">
+              <span>Stage Progress</span>
+              <span class="font-mono">${task.progress || 0}%</span>
+            </div>
+            <div class="h-1.5 w-full bg-dark-950 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500 ${
+                task.stageId === 7 ? 'bg-emerald-500' : 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+              }" style="width: ${task.progress || 0}%"></div>
+            </div>
+          </div>
+
+          <!-- ASSIGNEE & ACTIONS -->
+          <div class="flex items-center justify-between pt-1 border-t border-dark-800/80 text-[11px]">
+            <span class="text-slate-400 flex items-center gap-1">
+              <i class="fa-solid fa-robot text-slate-500 text-[10px]"></i> ${stage ? stage.agentName : 'Production'}
+            </span>
+            <button onclick="openInterveneModal('${task.id}')" class="px-2 py-1 rounded bg-dark-750 hover:bg-emerald-950 hover:text-emerald-300 hover:border-emerald-700 border border-dark-700 text-slate-300 font-medium text-[10px] transition flex items-center gap-1">
+              <i class="fa-solid fa-hand"></i> Intervene
+            </button>
+          </div>
+        `;
+
+        col.appendChild(card);
+      });
+
+      const activeTasks = tasks.filter(t => t.stageId < 7);
+      document.getElementById('stat-active-count').innerText = `${activeTasks.length} Tasks`;
+      document.getElementById('total-tasks-badge').innerText = `${tasks.length} Initiative${tasks.length === 1 ? '' : 's'}`;
+    }
+
+    function updateAgentWorkload(tasks) {
+      AGENTS.forEach(agent => {
+        if (agent.id === 'agent-watcher') return;
+        const assignedTask = tasks.find(t => {
+          const stage = STAGES.find(s => s.id === t.stageId);
+          return stage && stage.agentId === agent.id && t.stageId < 7 && t.status !== 'completed';
+        });
+
+        if (assignedTask) {
+          agent.status = 'working';
+          agent.activeTask = `[${assignedTask.project || 'General'}] ${assignedTask.title}`;
+        } else {
+          agent.status = 'idle';
+          agent.activeTask = null;
+        }
+      });
+      renderAgentRoster();
+    }
+
+    function renderLogs(events) {
+      const consoleEl = document.getElementById('live-console');
+      consoleEl.innerHTML = events.map(e => {
+        const isHuman = (e.initiator || '').toLowerCase().includes('human') || (e.source || '').toLowerCase().includes('human') || (e.source || '').toLowerCase().includes('supervisor');
+        const projBadge = e.project ? `<span class="px-1.5 py-0.5 rounded bg-dark-850 text-cyan-300 font-mono text-[9px] border border-cyan-800/50">📁 ${e.project}</span>` : '';
+        const initBadge = e.initiator ? `<span class="text-slate-500">[By: ${e.initiator}]</span>` : '';
+
+        return `
+          <div class="flex items-start space-x-2 leading-relaxed">
+            <span class="text-slate-500 select-none">[${e.time || ''}]</span>
+            ${projBadge}
+            <span class="font-bold ${isHuman ? 'text-amber-400' : 'text-emerald-400'} shrink-0">${e.source || 'Agent'}:</span>
+            <span class="text-slate-300">${e.text || ''}</span>
+            ${initBadge}
+          </div>
+        `;
+      }).join('');
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearLogs() {
+      allEvents = [];
+      document.getElementById('live-console').innerHTML = '';
+    }
+
+    async function clearAllTasks() {
+      if (!confirm('Reset dashboard and remove all initiatives?')) return;
+      try {
+        await fetch('/api/reset', { method: 'POST' });
+        allTasks = [];
+        updateFilteredView();
+      } catch (e) {
+        allTasks = [];
+        updateFilteredView();
+      }
+    }
+
+    // INTERVENTION MODAL
+    function openInterveneModal(taskId) {
+      selectedTaskId = taskId;
+      const task = allTasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const stage = STAGES.find(s => s.id === task.stageId);
+
+      document.getElementById('modal-task-id').innerText = task.id;
+      document.getElementById('modal-task-title').innerText = task.title;
+      document.getElementById('modal-task-project').innerText = `📁 ${task.project || 'General'}`;
+      document.getElementById('modal-task-initiator').innerText = task.initiator || 'Human (Chat)';
+      document.getElementById('modal-task-stage').innerText = `${stage ? stage.label : 'Unknown'} (${stage ? stage.agentName : 'None'})`;
+      document.getElementById('modal-input-directive').value = task.humanGuidance || '';
+      document.getElementById('modal-select-priority').value = task.priority || 'medium';
+
+      document.getElementById('modal-intervene').classList.remove('hidden');
+    }
+
+    function closeInterveneModal() {
+      document.getElementById('modal-intervene').classList.add('hidden');
+      selectedTaskId = null;
+    }
+
+    async function sendSaveIntervention() {
+      if (!selectedTaskId) return;
+      const directive = document.getElementById('modal-input-directive').value.trim();
+      const priority = document.getElementById('modal-select-priority').value;
+
+      try {
+        await fetch(`/api/tasks/${selectedTaskId}/intervene`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ directive, priority })
+        });
+      } catch (e) {
+        const task = allTasks.find(t => t.id === selectedTaskId);
+        if (task) {
+          task.humanGuidance = directive || null;
+          task.priority = priority;
+        }
+      }
+      closeInterveneModal();
+      fetchState();
+    }
+
+    async function sendInterventionRoute(targetStageId) {
+      if (!selectedTaskId) return;
+      try {
+        await fetch(`/api/tasks/${selectedTaskId}/intervene`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stageId: targetStageId,
+            progress: targetStageId === 7 ? 100 : 25,
+            status: targetStageId === 7 ? 'completed' : 'working',
+            currentAction: `Rerouted by Supervisor to Stage ${targetStageId}`
+          })
+        });
+      } catch (e) {
+        const task = allTasks.find(t => t.id === selectedTaskId);
+        if (task) {
+          task.stageId = targetStageId;
+          task.progress = targetStageId === 7 ? 100 : 25;
+        }
+      }
+      closeInterveneModal();
+      fetchState();
+    }
+
+    async function sendCancelTask() {
+      if (!selectedTaskId) return;
+      if (!confirm('Are you sure you want to cancel and remove this task?')) return;
+      try {
+        await fetch(`/api/tasks/${selectedTaskId}`, { method: 'DELETE' });
+      } catch (e) {
+        allTasks = allTasks.filter(t => t.id !== selectedTaskId);
+      }
+      closeInterveneModal();
+      fetchState();
+    }
+
+    // NEW TASK MODAL
+    function openNewTaskModal() {
+      document.getElementById('new-task-project').value = selectedProject === 'ALL' ? 'experiments' : selectedProject;
+      document.getElementById('new-task-title').value = '';
+      document.getElementById('new-task-desc').value = '';
+      document.getElementById('modal-new-task').classList.remove('hidden');
+    }
+
+    function closeNewTaskModal() {
+      document.getElementById('modal-new-task').classList.add('hidden');
+    }
+
+    async function submitNewTask() {
+      const project = document.getElementById('new-task-project').value.trim() || 'experiments';
+      const title = document.getElementById('new-task-title').value.trim();
+      const desc = document.getElementById('new-task-desc').value.trim();
+      if (!title) {
+        alert('Please enter an initiative title.');
+        return;
+      }
+
+      try {
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project,
+            title,
+            desc: desc || 'Scoped by executive order.',
+            currentAction: desc || 'Initiated by Human Supervisor',
+            initiator: 'Human (Supervisor)',
+            priority: 'high',
+            stageId: 1, // Backlog
+            progress: 10,
+            status: 'working'
+          })
+        });
+      } catch (e) {
+        allTasks.unshift({
+          id: `TASK-${Date.now().toString().slice(-4)}`,
+          project,
+          title,
+          desc,
+          currentAction: desc,
+          initiator: 'Human (Supervisor)',
+          priority: 'high',
+          stageId: 1,
+          progress: 10,
+          status: 'working'
+        });
+      }
+
+      closeNewTaskModal();
+      fetchState();
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
